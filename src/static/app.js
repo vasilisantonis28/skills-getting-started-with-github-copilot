@@ -3,12 +3,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
+  let lastActivitiesSnapshot = null;
 
   // Function to fetch activities from API
-  async function fetchActivities() {
+  async function fetchActivities(forceRender = false) {
     try {
-      const response = await fetch("/activities");
+      const response = await fetch("/activities", { cache: "no-store" });
       const activities = await response.json();
+      const snapshot = JSON.stringify(activities);
+
+      if (!forceRender && snapshot === lastActivitiesSnapshot) {
+        return;
+      }
+
+      lastActivitiesSnapshot = snapshot;
+      const selectedActivity = activitySelect.value;
 
       // Clear loading message
       activitiesList.innerHTML = "";
@@ -67,7 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 messageDiv.textContent = result.message;
                 messageDiv.className = "success";
                 messageDiv.classList.remove("hidden");
-                await fetchActivities();
+                await fetchActivities(true);
               } catch (error) {
                 messageDiv.textContent = error.message || "Failed to unregister participant";
                 messageDiv.className = "error";
@@ -97,6 +106,8 @@ document.addEventListener("DOMContentLoaded", () => {
         option.textContent = name;
         activitySelect.appendChild(option);
       });
+
+      activitySelect.value = selectedActivity;
     } catch (error) {
       activitiesList.innerHTML = "<p>Failed to load activities. Please try again later.</p>";
       console.error("Error fetching activities:", error);
@@ -124,7 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
-        await fetchActivities();
+        await fetchActivities(true);
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
@@ -146,4 +157,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initialize app
   fetchActivities();
+  setInterval(() => {
+    if (!document.hidden) {
+      fetchActivities();
+    }
+  }, 5000);
 });
